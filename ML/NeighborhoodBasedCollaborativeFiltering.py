@@ -7,9 +7,9 @@ from scipy import sparse
 #tuy nhiên trên thực tế số lượng users là rất lớn (lớn hơn nhiều so với số lượng item), chính vì vậy đôi khi chúng ta phải sử dụng item-item để tìm sự tương đương giữa các item với nhau, nếu người A thích một item trong nhóm này thì có thể họ cũng sẽ thích item khác trong nhóm đó
 class CF(object):
     def __init__(self, Y_data, k, dist_func = cosine_similarity, uuCF = 1):
-        self.uuCF = uuCF # user-user (1) or item-item (0) CF
+        self.uuCF = uuCF
         self.Y_data = Y_data if uuCF else Y_data[:, [1, 0, 2]] 
-        self.k = k # number of neighbor points
+        self.k = k
         self.dist_func = dist_func
         self.Ybar_data = None
         self.n_users = int(np.max(self.Y_data[:, 0])) + 1 
@@ -17,30 +17,18 @@ class CF(object):
     def add(self, new_data):
         self.Y_data = np.concatenate((self.Y_data, new_data), axis = 0)
     def normalize_Y(self):
-        users = self.Y_data[:, 0] # all users - first col of the Y_data
+        users = self.Y_data[:, 0]
         self.Ybar_data = self.Y_data.copy()
         self.mu = np.zeros((self.n_users,))
         for n in range(self.n_users):
-            # row indices of rating done by user n
-            # since indices need to be integers, we need to convert
             ids = np.where(users == n)[0].astype(np.int32)
-            # indices of all ratings associated with user n
             item_ids = self.Y_data[ids, 1] 
-            # and the corresponding ratings 
             ratings = self.Y_data[ids, 2]
-            # take mean
             m = np.mean(ratings) 
             if np.isnan(m):
-                m = 0 # to avoid empty array and nan value
-            # normalize
+                m = 0
             self.Ybar_data[ids, 2] = ratings - self.mu[n]
 
-        ################################################
-        # form the rating matrix as a sparse matrix. Sparsity is important 
-        # for both memory and computing efficiency. For example, if #user = 1M, 
-        # #item = 100k, then shape of the rating matrix would be (100k, 1M), 
-        # you may not have enough memory to store this. Then, instead, we store 
-        # nonzeros only, and, of course, their locations.
         self.Ybar = sparse.coo_matrix((self.Ybar_data[:, 2],
             (self.Ybar_data[:, 1], self.Ybar_data[:, 0])), (self.n_items, self.n_users))
         self.Ybar = self.Ybar.tocsr()
@@ -118,16 +106,6 @@ class CF(object):
                 print ('    Recommend item(s):', recommended_items, 'to user', u)
             else: 
                 print ('    Recommend item', u, 'to user(s) : ', recommended_items)
-#bộ data đơn giản
-# data file 
-# r_cols = ['user_id', 'item_id', 'rating']
-# ratings = pd.read_csv('test.csv', sep = ',', names = r_cols, encoding='latin-1')
-# Y_data = np.asarray(ratings)
-
-# rs = CF(Y_data, k = 2, uuCF = 1)
-# rs.fit()
-# rs.print_recommendation()
-#movielens
 r_cols = ['user_id', 'movie_id', 'rating', 'unix_timestamp']
 
 ratings_base = pd.read_csv('DataMovieLen/ua.base', sep='\t', names=r_cols, encoding='latin-1')
